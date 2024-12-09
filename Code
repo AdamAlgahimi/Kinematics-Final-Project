@@ -1,0 +1,92 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Link lengths (mm)
+L1, L2, L3, L4 = 216, 36, 216, 60
+
+# Input angular velocity (rad/s) and angular acceleration (rad/s^2)
+omega_2 = 10  # constant angular velocity
+alpha_2 = 0   # constant angular acceleration
+
+# Generate crank angles for a full rotation (0 to 2*pi)
+theta2 = np.linspace(0, 2 * np.pi, 100)
+
+# Initialize arrays for theta3, theta4, omega3, omega4, alpha3, alpha4
+theta3 = np.zeros_like(theta2)
+theta4 = np.zeros_like(theta2)
+omega3 = np.zeros_like(theta2)
+omega4 = np.zeros_like(theta2)
+alpha3 = np.zeros_like(theta2)
+alpha4 = np.zeros_like(theta2)
+
+# Loop through each crank angle for analysis
+for i, theta2_i in enumerate(theta2):
+    # Position analysis using the law of cosines
+    d = np.sqrt(L1**2 + L2**2 - 2 * L1 * L2 * np.cos(theta2_i))
+    cos_theta3 = (d**2 + L3**2 - L4**2) / (2 * d * L3)
+    sin_theta3 = np.sqrt(1 - cos_theta3**2)
+    theta3[i] = np.arctan2(sin_theta3, cos_theta3)
+    
+    cos_theta4 = (L1**2 + L4**2 - d**2) / (2 * L1 * L4)
+    sin_theta4 = np.sqrt(1 - cos_theta4**2)
+    theta4[i] = np.arctan2(sin_theta4, cos_theta4)
+    
+    # Velocity analysis
+    A = np.array([
+        [L3 * np.sin(theta3[i]), -L4 * np.sin(theta4[i])],
+        [L3 * np.cos(theta3[i]), -L4 * np.cos(theta4[i])]
+    ])
+    B = np.array([
+        omega_2 * L2 * np.sin(theta2_i),
+        omega_2 * L2 * np.cos(theta2_i)
+    ])
+    omega = np.linalg.solve(A, B)
+    omega3[i], omega4[i] = omega
+    
+    # Acceleration analysis
+    C = np.array([
+        [L3 * np.sin(theta3[i]), -L4 * np.sin(theta4[i])],
+        [L3 * np.cos(theta3[i]), -L4 * np.cos(theta4[i])]
+    ])
+    D = np.array([
+        alpha_2 * L2 * np.sin(theta2_i) + omega_2**2 * L2 * np.cos(theta2_i) - omega3[i]**2 * L3 * np.cos(theta3[i]) + omega4[i]**2 * L4 * np.cos(theta4[i]),
+        alpha_2 * L2 * np.cos(theta2_i) - omega_2**2 * L2 * np.sin(theta2_i) - omega3[i]**2 * L3 * np.sin(theta3[i]) + omega4[i]**2 * L4 * np.sin(theta4[i])
+    ])
+    alpha = np.linalg.solve(C, D)
+    alpha3[i], alpha4[i] = alpha
+
+# Plot results
+plt.figure(figsize=(12, 8))
+
+# Position plot
+plt.subplot(3, 1, 1)
+plt.plot(theta2, np.degrees(theta3), label=r'$\theta_3$ (deg)')
+plt.plot(theta2, np.degrees(theta4), label=r'$\theta_4$ (deg)')
+plt.title('Position Analysis')
+plt.xlabel(r'$\theta_2$ (rad)')
+plt.ylabel('Angle (degrees)')
+plt.legend()
+plt.grid()
+
+# Velocity plot
+plt.subplot(3, 1, 2)
+plt.plot(theta2, omega3, label=r'$\omega_3$ (rad/s)')
+plt.plot(theta2, omega4, label=r'$\omega_4$ (rad/s)')
+plt.title('Velocity Analysis')
+plt.xlabel(r'$\theta_2$ (rad)')
+plt.ylabel('Angular Velocity (rad/s)')
+plt.legend()
+plt.grid()
+
+# Acceleration plot
+plt.subplot(3, 1, 3)
+plt.plot(theta2, alpha3, label=r'$\alpha_3$ (rad/s²)')
+plt.plot(theta2, alpha4, label=r'$\alpha_4$ (rad/s²)')
+plt.title('Acceleration Analysis')
+plt.xlabel(r'$\theta_2$ (rad)')
+plt.ylabel('Angular Acceleration (rad/s²)')
+plt.legend()
+plt.grid()
+
+plt.tight_layout()
+plt.show()
